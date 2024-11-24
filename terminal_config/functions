@@ -1,13 +1,13 @@
 # ------------------------------------------------
 # Function Directory
 # ------------------------------------------------
-# 1. calculate_duration    - Calculate total video durations in directories
+# 1. show_duration         - Calculate total video durations in directories
 # 2. convert_to_mp4        - Convert videos to MP4 format without re-encoding
 # 3. create_iso            - Create ISO files from specified folders
 # ------------------------------------------------
 
 # ================================================
-# Function: calculate_duration
+# Function: show_duration
 # ================================================
 # Description:
 # This function calculates the total duration of all `.mp4` video files
@@ -41,7 +41,7 @@
 # - Invalid directories are skipped with a warning.
 #
 # >>>>>>>>>>>>>>>>>>> BEGIN >>>>>>>>>>>>>>>>>>>>
-calculate_duration() {
+show_duration() {
     if [ "$#" -eq 0 ]; then
         echo "Please provide at least one directory path!"
         return 1
@@ -163,7 +163,6 @@ convert_to_mp4() {
     done
 }
 # <<<<<<<<<<<<<<<<<<<< END <<<<<<<<<<<<<<<<<<<<<<
-
 # Alias for quick access
 alias c2mp4='convert_to_mp4'
 
