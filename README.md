@@ -63,6 +63,7 @@ source ~/.zshrc
 
 2. **添加引用外部文件的命令**
    在文件末尾添加以下内容：
+
    ```bash
    # 加载环境变量
    if [ -f ~/terminal-config/.env ]; then
