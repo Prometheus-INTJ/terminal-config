@@ -27,18 +27,18 @@ git clone https://github.com/username/terminal-config.git ~/terminal-config
 在终端配置文件（如 `~/.zshrc` 或 `~/.bashrc`）中加入以下内容：
 ```bash
 # 加载环境变量
-if [ -f ~/terminal-config/.env ]; then
-    source ~/terminal-config/.env
+if [ -f ~/.terminal-config/.env ]; then
+    source ~/.terminal-config/.env
 fi
 
 # 加载别名
-if [ -f ~/terminal-config/.aliases ]; then
-    source ~/terminal-config/.aliases
+if [ -f ~/.terminal-config/.aliases ]; then
+    source ~/.terminal-config/.aliases
 fi
 
 # 加载自定义函数
-if [ -f ~/terminal-config/.functions ]; then
-    source ~/terminal-config/.functions
+if [ -f ~/.terminal-config/.functions ]; then
+    source ~/.terminal-config/.functions
 fi
 ```
 
@@ -66,18 +66,18 @@ source ~/.zshrc
 
    ```bash
    # 加载环境变量
-   if [ -f ~/terminal-config/.env ]; then
-       source ~/terminal-config/.env
+   if [ -f ~/.terminal-config/.env ]; then
+       source ~/.terminal-config/.env
    fi
 
    # 加载别名
-   if [ -f ~/terminal-config/.aliases ]; then
-       source ~/terminal-config/.aliases
+   if [ -f ~/.terminal-config/.aliases ]; then
+       source ~/.terminal-config/.aliases
    fi
 
    # 加载自定义函数
-   if [ -f ~/terminal-config/.functions ]; then
-       source ~/terminal-config/.functions
+   if [ -f ~/.terminal-config/.functions ]; then
+       source ~/.terminal-config/.functions
    fi
    ```
 
