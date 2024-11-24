@@ -1,10 +1,10 @@
-# ！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！
+# ------------------------------------------------
 # Function Directory
-# ！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！
+# ------------------------------------------------
 # 1. calculate_duration    - Calculate total video durations in directories
 # 2. convert_to_mp4        - Convert videos to MP4 format without re-encoding
 # 3. create_iso            - Create ISO files from specified folders
-# ！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！
+# ------------------------------------------------
 
 # ================================================
 # Function: calculate_duration
