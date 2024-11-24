@@ -1,0 +1,228 @@
+# ！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！
+# Function Directory
+# ！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！
+# 1. calculate_duration    - Calculate total video durations in directories
+# 2. convert_to_mp4        - Convert videos to MP4 format without re-encoding
+# 3. create_iso            - Create ISO files from specified folders
+# ！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！
+
+# ================================================
+# Function: calculate_duration
+# ================================================
+# Description:
+# This function calculates the total duration of all `.mp4` video files
+# within one or multiple directories.
+#
+# Features:
+# - Single directory: Displays only the total duration.
+# - Multiple directories:
+#   - Shows the duration for each directory (directory name separated by a TAB).
+#   - Outputs the cumulative total duration across all directories.
+#
+# Dependencies:
+# - ffmpeg: Extracts video metadata (e.g., duration).
+# - awk: Performs calculations and formats output.
+# - basename: Displays only the directory name instead of the full path.
+#
+# Usage:
+# - Single directory: calculate_duration "/path/to/directory"
+# - Multiple directories: calculate_duration "/path/to/dir1" "/path/to/dir2"
+#
+# Example Output:
+# - Single directory:
+#   Total duration for 'dir1': 5 hours 45 minutes 12 seconds
+#
+# - Multiple directories:
+#   Duration for 'dir1':    3 hours 20 minutes 45 seconds
+#   Duration for 'dir2':    5 hours 45 minutes 12 seconds
+#   Total duration across all directories: 9 hours 6 minutes 57 seconds
+#
+# Notes:
+# - Invalid directories are skipped with a warning.
+#
+# >>>>>>>>>>>>>>>>>>> BEGIN >>>>>>>>>>>>>>>>>>>>
+calculate_duration() {
+    if [ "$#" -eq 0 ]; then
+        echo "Please provide at least one directory path!"
+        return 1
+    fi
+
+    total_seconds=0
+
+    if [ "$#" -eq 1 ]; then
+        # Single directory: calculate total duration
+        directory="$1"
+        if [ ! -d "$directory" ]; then
+            echo "Invalid or non-existent path: $directory"
+            return 1
+        fi
+
+        duration=$(find "$directory" -type f -name "*.mp4" -exec ffmpeg -i {} 2>&1 \; | grep "Duration" | awk '{print $2}' | tr -d , | awk -F: '{ total += ($1 * 3600) + ($2 * 60) + $3 } END { print total }')
+        
+        [ -z "$duration" ] && duration=0
+
+        total_seconds=$((total_seconds + duration))
+
+        hours=$((total_seconds / 3600))
+        minutes=$(((total_seconds % 3600) / 60))
+        seconds=$((total_seconds % 60))
+
+        printf "Total duration for '%s': %d hours %d minutes %d seconds\n" "$(basename "$directory")" "$hours" "$minutes" "$seconds"
+    else
+        # Multiple directories: calculate and display duration for each
+        for directory in "$@"; do
+            if [ ! -d "$directory" ]; then
+                echo "Invalid or non-existent path: $directory"
+                continue
+            fi
+
+            duration=$(find "$directory" -type f -name "*.mp4" -exec ffmpeg -i {} 2>&1 \; | grep "Duration" | awk '{print $2}' | tr -d , | awk -F: '{ total += ($1 * 3600) + ($2 * 60) + $3 } END { print total }')
+            
+            [ -z "$duration" ] && duration=0
+
+            total_seconds=$((total_seconds + duration))
+
+            hours=$((duration / 3600))
+            minutes=$(((duration % 3600) / 60))
+            seconds=$((duration % 60))
+
+            # Use a TAB to separate directory name and duration
+            printf "Duration for '%s':\t%d hours %d minutes %d seconds\n" "$(basename "$directory")" "$hours" "$minutes" "$seconds"
+        done
+
+        # Output the total duration across all directories
+        hours=$((total_seconds / 3600))
+        minutes=$(((total_seconds % 3600) / 60))
+        seconds=$((total_seconds % 60))
+
+        printf "Total duration across all directories: %d hours %d minutes %d seconds\n" "$hours" "$minutes" "$seconds"
+    fi
+}
+# <<<<<<<<<<<<<<<<<<<< END <<<<<<<<<<<<<<<<<<<<<<
+
+# ================================================
+# Function: convert_to_mp4
+# ================================================
+# Description:
+# Converts video files (.ts, .mkv, etc.) to MP4 format without re-encoding.
+#
+# Features:
+# - Supports batch processing of multiple input files.
+# - Retains the original file's video and audio streams (no re-encoding).
+# - Automatically names the output file based on the input filename.
+#
+# Dependencies:
+# - ffmpeg: Required for video conversion.
+#
+# Usage:
+# - Single file: convert_to_mp4 input_file
+# - Multiple files: convert_to_mp4 input_file1 input_file2 ...
+#
+# Example:
+# - Single file:
+#   convert_to_mp4 input.mkv
+#   Output: input.mp4
+#
+# - Multiple files:
+#   convert_to_mp4 input1.mkv input2.ts
+#   Outputs: input1.mp4, input2.mp4
+#
+# Notes:
+# - If the output file already exists, it will be overwritten.
+#
+# >>>>>>>>>>>>>>>>>>> BEGIN >>>>>>>>>>>>>>>>>>>>
+convert_to_mp4() {
+    if [ "$#" -eq 0 ]; then
+        echo "Please provide at least one input file!"
+        return 1
+    fi
+
+    for input_file in "$@"; do
+        if [ ! -f "$input_file" ]; then
+            echo "File not found: $input_file"
+            continue
+        fi
+
+        # Get the directory and base name of the input file
+        source_dir=$(dirname "$input_file")
+        base_name=$(basename "$input_file" | sed 's/\.[^.]*$//')
+
+        # Construct the output file path in the source directory
+        output_file="$source_dir/$base_name.mp4"
+
+        # Perform the conversion
+        echo "Converting '$input_file' to '$output_file'..."
+        ffmpeg -i "$input_file" -c copy "$output_file"
+
+        # Check if the conversion succeeded
+        if [ $? -eq 0 ]; then
+            echo "Conversion successful: $output_file"
+        else
+            echo "Conversion failed: $input_file"
+        fi
+    done
+}
+# <<<<<<<<<<<<<<<<<<<< END <<<<<<<<<<<<<<<<<<<<<<
+
+# Alias for quick access
+alias c2mp4='convert_to_mp4'
+
+# ================================================
+# Function: create_iso
+# ================================================
+# Description:
+# Creates an ISO file from a specified folder using hdiutil.
+# The ISO will be saved in the same directory as the input folder,
+# with a default or user-specified name.
+#
+# Usage:
+# - create_iso <folder_path> [iso_name]
+#
+# Example:
+# - create_iso /path/to/folder
+#   -> Output: /path/to/folder_backup.iso
+#
+# - create_iso /path/to/folder MyISO.iso
+#   -> Output: /path/to/MyISO.iso
+#
+# >>>>>>>>>>>>>>>>>>> BEGIN >>>>>>>>>>>>>>>>>>>>
+create_iso() {
+    if [ "$#" -lt 1 ]; then
+        echo "Usage: create_iso <folder_path> [iso_name]"
+        return 1
+    fi
+
+    # Get the folder path and validate
+    folder_path="$1"
+    if [ ! -d "$folder_path" ]; then
+        echo "Error: Folder not found: $folder_path"
+        return 1
+    fi
+
+    # Get the base name of the folder
+    base_name=$(basename "$folder_path")
+
+    # Determine output ISO name
+    if [ "$#" -eq 2 ]; then
+        # If user specifies an ISO name
+        iso_name="$2"
+    else
+        # Default to folder_name_backup.iso
+        iso_name="${base_name}_backup.iso"
+    fi
+
+    # Construct full output path
+    output_path=$(dirname "$folder_path")/"$iso_name"
+
+    # Create the ISO file using hdiutil
+    echo "Creating ISO from folder '$folder_path'..."
+    hdiutil makehybrid -o "$output_path" "$folder_path" -iso
+
+    # Check if ISO creation was successful
+    if [ $? -eq 0 ]; then
+        echo "ISO created successfully: $output_path"
+    else
+        echo "Failed to create ISO from folder: $folder_path"
+    fi
+}
+# <<<<<<<<<<<<<<<<<<<< END <<<<<<<<<<<<<<<<<<<<<<
