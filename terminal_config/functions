@@ -4,6 +4,7 @@
 # 1. show_duration         - Calculate total video durations in directories
 # 2. convert_to_mp4        - Convert videos to MP4 format without re-encoding
 # 3. create_iso            - Create ISO files from specified folders
+# 4. digital_life          - Mount and open the encrypted sparsebundle disk image
 # ------------------------------------------------
 
 # ================================================
@@ -43,60 +44,93 @@
 # >>>>>>>>>>>>>>>>>>> BEGIN >>>>>>>>>>>>>>>>>>>>
 show_duration() {
     if [ "$#" -eq 0 ]; then
-        echo "Please provide at least one directory path!"
+        echo "Please provide at least one file or directory path!"
         return 1
     fi
 
     total_seconds=0
 
-    if [ "$#" -eq 1 ]; then
-        # Single directory: calculate total duration
-        directory="$1"
-        if [ ! -d "$directory" ]; then
-            echo "Invalid or non-existent path: $directory"
-            return 1
+    # Limit the name length, truncate if it exceeds 23 characters, replacing the middle with "..."
+    truncate_name() {
+        local name="$1"
+        local max_length=100
+        local name_len=$(echo -n "$name" | wc -c)
+
+        if [ "$name_len" -gt "$max_length" ]; then
+            local prefix=$(echo -n "$name" | cut -c1-10)
+            local suffix=$(echo -n "$name" | rev | cut -c1-10 | rev)
+            echo "${prefix}...${suffix}"
+        else
+            echo "$name"
+        fi
+    }
+
+    # Create a temporary file to store results
+    temp_file=$(mktemp)
+
+    # Add an empty line before the table
+    echo -e "\n" > "$temp_file"
+    # Add header
+    echo -e "Name\t\tDuration" >> "$temp_file"
+
+    for item in "$@"; do
+        if [ -d "$item" ]; then
+            # Process directory, calculate total duration of all .mp4 files
+            duration=$(find "$item" -type f -name "*.mp4" -exec ffmpeg -i {} 2>&1 \; | grep "Duration" | awk '{print $2}' | tr -d , | awk -F: '{ total += ($1 * 3600) + ($2 * 60) + $3 } END { print int(total) }')
+        elif [ -f "$item" ]; then
+            # Process single file, extract its duration
+            duration=$(ffmpeg -i "$item" 2>&1 | grep "Duration" | awk '{print $2}' | tr -d , | awk -F: '{ print int(($1 * 3600) + ($2 * 60) + $3) }')
+        else
+            # Handle invalid path
+            echo -e "\t$(truncate_name "$(basename "$item")")\tInvalid path" >> "$temp_file"
+            continue
         fi
 
-        duration=$(find "$directory" -type f -name "*.mp4" -exec ffmpeg -i {} 2>&1 \; | grep "Duration" | awk '{print $2}' | tr -d , | awk -F: '{ total += ($1 * 3600) + ($2 * 60) + $3 } END { print total }')
-        
         [ -z "$duration" ] && duration=0
 
+        # Accumulate total seconds
         total_seconds=$((total_seconds + duration))
 
-        hours=$((total_seconds / 3600))
-        minutes=$(((total_seconds % 3600) / 60))
-        seconds=$((total_seconds % 60))
+        # Convert duration from seconds to hh:mm:ss format
+        hours=$((duration / 3600))
+        minutes=$(((duration % 3600) / 60))
+        seconds=$((duration % 60))
+        duration_str=$(printf "%02d:%02d:%02d" "$hours" "$minutes" "$seconds")
 
-        printf "Total duration for '%s': %d hours %d minutes %d seconds\n" "$(basename "$directory")" "$hours" "$minutes" "$seconds"
-    else
-        # Multiple directories: calculate and display duration for each
-        for directory in "$@"; do
-            if [ ! -d "$directory" ]; then
-                echo "Invalid or non-existent path: $directory"
-                continue
-            fi
+        # Write the formatted name and duration to the temporary file
+        echo -e "\t$(truncate_name "$(basename "$item")")\t$duration_str" >> "$temp_file"
+    done
 
-            duration=$(find "$directory" -type f -name "*.mp4" -exec ffmpeg -i {} 2>&1 \; | grep "Duration" | awk '{print $2}' | tr -d , | awk -F: '{ total += ($1 * 3600) + ($2 * 60) + $3 } END { print total }')
-            
-            [ -z "$duration" ] && duration=0
+    # Print the table with an additional empty line before it
+    echo
+    column -s $'\t' -t < "$temp_file"
 
-            total_seconds=$((total_seconds + duration))
+    # Format total duration intelligently
+    hours=$((total_seconds / 3600))
+    minutes=$(((total_seconds % 3600) / 60))
+    seconds=$((total_seconds % 60))
 
-            hours=$((duration / 3600))
-            minutes=$(((duration % 3600) / 60))
-            seconds=$((duration % 60))
-
-            # Use a TAB to separate directory name and duration
-            printf "Duration for '%s':\t%d hours %d minutes %d seconds\n" "$(basename "$directory")" "$hours" "$minutes" "$seconds"
-        done
-
-        # Output the total duration across all directories
-        hours=$((total_seconds / 3600))
-        minutes=$(((total_seconds % 3600) / 60))
-        seconds=$((total_seconds % 60))
-
-        printf "Total duration across all directories: %d hours %d minutes %d seconds\n" "$hours" "$minutes" "$seconds"
+    total_duration=""
+    if [ "$hours" -gt 0 ]; then
+        total_duration="$hours hour"
+        [ "$hours" -gt 1 ] && total_duration="${total_duration}s"
     fi
+    if [ "$minutes" -gt 0 ]; then
+        [ -n "$total_duration" ] && total_duration="$total_duration, "
+        total_duration="$total_duration$minutes minute"
+        [ "$minutes" -gt 1 ] && total_duration="${total_duration}s"
+    fi
+    if [ "$seconds" -gt 0 ]; then
+        [ -n "$total_duration" ] && total_duration="$total_duration, "
+        total_duration="$total_duration$seconds second"
+        [ "$seconds" -gt 1 ] && total_duration="${total_duration}s"
+    fi
+
+    # Print total duration
+    echo -e "\nTotal Duration: $total_duration\n"
+
+    # Remove temporary file
+    rm -f "$temp_file"
 }
 # <<<<<<<<<<<<<<<<<<<< END <<<<<<<<<<<<<<<<<<<<<<
 
@@ -222,6 +256,55 @@ create_iso() {
         echo "ISO created successfully: $output_path"
     else
         echo "Failed to create ISO from folder: $folder_path"
+    fi
+}
+# <<<<<<<<<<<<<<<<<<<< END <<<<<<<<<<<<<<<<<<<<<<
+
+# ================================================
+# Function: digital_life
+# ================================================
+# Description:
+# This function mounts and opens an encrypted sparsebundle disk image
+# located in a specific folder with a path that includes Unicode characters.
+#
+# Features:
+# - Dynamically resolves Unicode characters in the path.
+# - Opens the sparsebundle disk image using the `open` command.
+# - Provides meaningful error messages for invalid or inaccessible paths.
+#
+# Dependencies:
+# - macOS `open` command: Used to open and mount the disk image.
+# - Unicode support in Shell for dynamic path resolution.
+#
+# Usage:
+# - digital_life
+#   - Mounts and opens the predefined sparsebundle disk image.
+#
+# Notes:
+# - Ensure the sparsebundle disk image exists at the predefined path.
+# - If the path includes non-English characters, ensure your terminal and environment support Unicode.
+#
+# >>>>>>>>>>>>>>>>>>> BEGIN >>>>>>>>>>>>>>>>>>>>
+digital_life() {
+    # Resolve Unicode path dynamically
+    sparsebundle_path=$(echo -e "/Volumes/\u54c6\u5566\u0041\u68a6\u306e\u8bb0\u5fc6\u9762\u5305/Computer Software/Mac Intel Applications/Development and Testing/system_backup.sparsebundle")
+    
+    # Check if the sparsebundle file exists
+    if [ ! -e "$sparsebundle_path" ]; then
+        echo "Error: Disk image not found."
+        return 1
+    fi
+
+    # Attempt to open the sparsebundle disk image
+    echo "Opening the encrypted disk image. Enter password to unlock."
+    open "$sparsebundle_path"
+
+    # Check if the open command succeeded
+    if [ $? -eq 0 ]; then
+        echo "Password prompt displayed. Unlock to access."
+    else
+        echo "Error: Failed to open the disk image."
+        return 1
     fi
 }
 # <<<<<<<<<<<<<<<<<<<< END <<<<<<<<<<<<<<<<<<<<<<
