@@ -1,0 +1,21 @@
+# ================================================
+# Aliases Configuration File
+# ================================================
+
+# Essential - Frequently used
+alias fix_app="xattr -r -d com.apple.quarantine"
+alias upgrade_mkvtoolnix='brew upgrade --cask mkvtoolnix'
+
+# Secondary - For specific scenarios
+alias clean_up='hdiutil compact'
+alias clear_dot='defaults write com.apple.systempreferences AttentionPrefBundleIDs 0 && Killall Dock'
+
+# Useful utilities or program
+alias metadata_hub="cd /Volumes/Digital\ Life/metadata_hub && python3 main.py"
+alias safe_open='HISTFILE= vim -i NONE -n'
+alias mpv=" HISTFILE=/dev/null mpv"
+
+# Custom prompt
+alias no_user_prompt='export PS1="%m: %1~$ "'
+alias root_prompt='export PS1="root@%m: %1~$ "'
+alias restore_prompt='export PS1="%n@%m %1~$ "'
